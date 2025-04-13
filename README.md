@@ -1,25 +1,18 @@
-# 🌀 Learn Apache Airflow with CeleryExecutor on Podman
+# 🌀 Learn Apache Airflow with CeleryExecutor on Podman (Apple Silicon & x86 Ready)
 
-This project sets up an **enterprise-style Apache Airflow environment** using **Podman** with **CeleryExecutor**, backed by **PostgreSQL** and **Redis**. It's designed to help you learn how Airflow is used in real-world distributed and scalable systems.
+This project helps you deploy **Apache Airflow** using **Podman** on macOS — with support for both **Apple Silicon (M1–M4)** and **x86_64 machines**. It uses `CeleryExecutor`, and includes PostgreSQL, Redis, Flower, and full `podman-compose` compatibility.
 
 ---
 
 ## 🚀 Features
 
-- ✅ Airflow 2.8.1 with CeleryExecutor
+- ✅ CeleryExecutor-based Airflow deployment
+- ✅ PostgreSQL for metadata DB
 - ✅ Redis as Celery broker
-- ✅ PostgreSQL as metadata DB
-- ✅ Flower monitoring dashboard on port `5555`
-- ✅ Modular DAG examples (ETL, sensors, parallel execution)
-- ✅ `podman-compose`-compatible
-
----
-
-## 🧰 Prerequisites
-
-- Podman & Podman Compose
-- Python 3.8+
-- Internet connection (for pulling images)
+- ✅ Flower UI for task monitoring
+- ✅ `podman-compose` support for both x86 and ARM
+- ✅ Lima VM config for native Podman on Apple Silicon
+- ✅ Sample DAGs including ETL, sensor, and parallel tasks
 
 ---
 
@@ -33,29 +26,59 @@ learn_airflow_playground/
 │   ├── 03_s3_sensor_example.py
 │   └── 04_parallel_tasks.py
 ├── docker/
-│   └── podman-compose.yml
+│   └── podman-compose.yaml
 ├── plugins/
 │   └── my_custom_operator.py
 ├── setup.sh
 ├── requirements.txt
+├── lima-podman-config.yaml
 └── README.md
 ```
 
 ---
 
-## ⚙️ Setup Instructions
+## ⚙️ Setup Instructions (x86 or Lima)
+
+### 🔧 On x86 Machines
 
 ```bash
-# Clone and navigate
-unzip learn_airflow_playground.zip
-cd learn_airflow_playground
-
-# Initialize project directories, pull images, and create Airflow user
-bash setup.sh
-
-# Start all services with Podman Compose
 cd docker
-podman-compose up -d
+podman-compose -f podman-compose.yaml up -d
+```
+
+### 🍏 On Apple Silicon (M1–M4 Macs)
+
+1. **Install Lima**:
+
+```bash
+brew install lima
+```
+
+2. **Start the Lima VM with Podman**:
+
+```bash
+limactl start --name=podman-airflow --set arch=aarch64 template://podman
+```
+
+3. **Shell into the Lima VM**:
+
+```bash
+limactl shell podman-airflow
+cd /Users/YOUR_USERNAME/path/to/learn_airflow_playground/docker
+pip3 install podman-compose
+podman-compose -f podman-compose.yaml up -d
+```
+
+4. **(Optional) Enable Port Forwarding**:
+
+Add this to your Lima config and restart:
+
+```yaml
+portForwards:
+  - guestPort: 8080
+    hostPort: 8080
+  - guestPort: 5555
+    hostPort: 5555
 ```
 
 ---
@@ -65,7 +88,15 @@ podman-compose up -d
 | Component     | URL                         | Notes                        |
 |---------------|-----------------------------|------------------------------|
 | Airflow UI    | http://localhost:8080       | Login: `admin / admin`       |
-| Flower UI     | http://localhost:5555       | Monitor Celery workers/tasks |
+| Flower UI     | http://localhost:5555       | Celery monitoring dashboard  |
+
+---
+
+## 📦 Python Requirements (for local DAG dev)
+
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
@@ -80,13 +111,34 @@ podman-compose up -d
 
 ---
 
-## 📦 Python Requirements
+## 🧠 Tips for Using Airflow Webserver
 
-If you want to install locally (e.g. for testing DAGs):
+- 🧪 Place new DAGs in the `dags/` folder.
+- 🔁 If DAGs don't appear, restart the webserver container.
+- 🔒 For production: reverse proxy with NGINX or Traefik.
+
+---
+
+## 🍏 Apple Silicon (M1/M2/M3/M4) Setup Tips
+
+If you're on an Apple Silicon Mac, follow these steps to avoid architecture issues with QEMU and Podman:
+
+### ✅ 1. Use the Correct Homebrew Architecture
 
 ```bash
-pip install -r requirements.txt
+/opt/homebrew/bin/brew install qemu
 ```
+
+Avoid `/usr/local/bin/brew`, which installs x86_64 binaries.
+
+### ✅ 2. Check That QEMU Is ARM-Compatible
+
+```bash
+file $(which qemu-system-aarch64)
+```
+
+✅ You should see: `Mach-O 64-bit executable arm64`  
+❌ If you see `x86_64`, uninstall QEMU and reinstall with the correct brew.
 
 ---
 
@@ -98,54 +150,9 @@ LinkedIn: [linkedin.com/in/harrystaley](https://linkedin.com/in/harrystaley)
 
 ---
 
-## 🛠️ Future Ideas
+## 📚 Resources
 
-- Add Kubernetes YAML for `podman play kube`
-- Integrate with GitHub Actions to auto-deploy DAGs
-- Add Airflow REST API usage examples
-
----
-
-
----
-
-## 🌐 Airflow Webserver Overview
-
-The **Airflow Webserver** is your control panel for managing workflows.
-
-### 🔍 Key Features
-| Feature                    | Description                                                                 |
-|---------------------------|-----------------------------------------------------------------------------|
-| 🌳 Browse DAGs             | View and manage all registered DAGs                                        |
-| 🧠 Trigger DAGs manually   | Execute workflows on-demand for testing or production                      |
-| 📊 Monitor task status     | Check logs, status, Gantt charts, and retry history                        |
-| ⚙️ Configure variables     | Set Airflow variables and connections via the UI                           |
-| 👤 Role-based access       | RBAC enabled to control user and group permissions                         |
-
-### ⚙️ Setup Details in This Project
-
-The `airflow-webserver` is defined in `podman-compose.yml` and exposed on port `8080`.
-
-```yaml
-airflow-webserver:
-  image: apache/airflow:2.8.1-python3.9
-  ports:
-    - "8080:8080"
-  command: webserver
-```
-
-- Accessible at: [http://localhost:8080](http://localhost:8080)
-- Default credentials:
-    - **Username:** `admin`
-    - **Password:** `admin`
-
-### 🛠️ Pro Tips
-- 🧪 Place new DAG files into the `dags/` directory. They will auto-refresh.
-- 🔁 Restart the webserver if DAGs don’t appear immediately.
-- 🔒 In production, proxy the UI with **NGINX** or **Traefik** for HTTPS and load balancing.
-- 📈 Logs are written to `logs/` and can be tailed live.
-
-Let me know if you'd like to:
-- Add Flower or Prometheus health checks
-- Enable TLS/HTTPS with reverse proxy
-- Integrate OAuth2 or LDAP for enterprise SSO
+- [Apache Airflow Documentation](https://airflow.apache.org/docs/)
+- [Podman Docs](https://docs.podman.io/)
+- [Colima](https://github.com/abiosoft/colima)
+- [Lima](https://github.com/lima-vm/lima)
