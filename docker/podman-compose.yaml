@@ -84,3 +84,6 @@ services:
     ports:
       - "5555:5555"
     command: celery flower
+
+volumes:
+  pg_data:

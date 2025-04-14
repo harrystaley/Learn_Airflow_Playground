@@ -1,9 +1,8 @@
-# Lima config for Podman on Apple Silicon
 arch: "aarch64"
+
 images:
   - location: "https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-arm64.img"
     arch: "aarch64"
-    digest: ""
 
 mounts:
   - location: "~"
@@ -17,25 +16,41 @@ provision:
   - mode: system
     script: |
       #!/bin/bash
+      set -eux
+
       apt-get update
-      apt-get install -y software-properties-common
-      . /etc/os-release
+      apt-get install -y software-properties-common python3-pip uidmap curl
+
       echo "Installing Podman..."
-      source /etc/os-release
-      . /etc/os-release
-      . /etc/os-release
-      . /etc/os-release
       echo "deb http://deb.debian.org/debian bullseye-backports main" >> /etc/apt/sources.list
       apt-get update
       apt-get -t bullseye-backports install -y podman
-      echo "alias podman='podman --remote'" >> /etc/profile
-      echo "export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock" >> /etc/profile
 
-ssh:
-  localPort: 60022
+      # Ensure podman is visible everywhere
+      ln -sf /usr/bin/podman /usr/local/bin/podman
 
-portForwards:
-  - guestPort: 8080
-    hostPort: 8080
-  - guestPort: 5555
-    hostPort: 5555
+      echo 'export PATH="/usr/local/bin:/usr/bin:$PATH"' >> /etc/profile
+      echo 'export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock' >> /etc/profile
+      echo 'alias podman="podman --remote"' >> /etc/profile
+
+  - mode: user
+    script: |
+      mkdir -p ~/.local/bin
+
+      # Wrapper shim for podman
+      cat <<'EOF' > ~/.local/bin/podman
+      #!/bin/bash
+      exec /usr/bin/podman "$@"
+      EOF
+
+      chmod +x ~/.local/bin/podman
+
+      echo 'export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:$PATH"' >> ~/.bashrc
+      echo 'export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock' >> ~/.bashrc
+      echo 'alias podman="podman --remote"' >> ~/.bashrc
+      source ~/.bashrc
+
+      pip3 install --user podman-compose
+
+      # Validate install
+      podman --version
