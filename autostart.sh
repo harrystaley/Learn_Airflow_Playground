@@ -8,7 +8,7 @@ if ! command -v podman &> /dev/null; then
   exit 1
 fi
 
-# Handle Rosetta detection
+# Detect architecture and Rosetta
 ARCH=$(uname -m)
 REAL_ARCH=$(arch)
 IS_ROSETTA=$(sysctl -in sysctl.proc_translated 2>/dev/null || echo "0")
@@ -16,35 +16,39 @@ if [[ "$ARCH" == "x86_64" && "$REAL_ARCH" == "arm64" ]]; then
   ARCH="arm64"
 fi
 
-# Define host-side paths
+# Define project paths
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOCKER_DIR="${REPO_ROOT}/docker"
 COMPOSE_FILE="podman-compose.yaml"
+LIMA_CONFIG="${REPO_ROOT}/lima/lima-podman-config.yaml"
 
-# Validate the compose file exists on host
+# Validate that the compose file exists
 if [[ ! -f "${DOCKER_DIR}/${COMPOSE_FILE}" ]]; then
   echo "❌ Missing ${COMPOSE_FILE} in ${DOCKER_DIR}. Please add it and try again."
   exit 1
 fi
 
-# Construct Lima path relative to $HOME
+# Construct Lima path
 LIMA_PROJECT_DIR="/Users/$(whoami)${REPO_ROOT#"$HOME"}/docker"
 
-# Apple Silicon (native or via Rosetta)
+# Use Lima on Apple Silicon
 if [[ "$ARCH" == "arm64" || "$IS_ROSETTA" == "1" ]]; then
-  echo "🍏 Detected Apple Silicon or Rosetta. Using Lima..."
+  echo "🍏 Detected Apple Silicon or Rosetta. Using Lima with Podman..."
 
-  # Start or reuse the Lima VM
-  if ! limactl list | grep -q podman-airflow; then
-    limactl start --name=podman-airflow ./lima/lima-podman-config.yaml
-  else
-    limactl start podman-airflow
+  # Fully recreate the Lima VM to ensure portForwards apply
+  if limactl list | grep -q podman-airflow; then
+    echo "🧼 Removing existing Lima VM podman-airflow..."
+    limactl stop podman-airflow || true
+    limactl delete podman-airflow || true
   fi
+
+  echo "🚀 Creating Lima VM with updated config..."
+  limactl start --name=podman-airflow "$LIMA_CONFIG"
 
   echo "🔄 Spinning up Airflow containers inside Lima..."
 
-  # Run Airflow via podman-compose inside Lima
   limactl shell podman-airflow bash <<EOF
+set -e
 cd "$LIMA_PROJECT_DIR"
 
 if [[ ! -f podman-compose.yaml ]]; then
@@ -52,11 +56,12 @@ if [[ ! -f podman-compose.yaml ]]; then
   exit 1
 fi
 
+echo "✅ Running podman-compose up..."
 ~/.local/bin/podman-compose -f podman-compose.yaml up -d
 EOF
 
 else
-  echo "🖥️ Running on native Intel. Using Podman machine..."
+  echo "🖥️ Detected native Intel. Using Podman machine..."
 
   if ! podman machine list | grep -q "Running"; then
     echo "🚀 Starting Podman machine..."
