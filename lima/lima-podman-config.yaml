@@ -19,16 +19,20 @@ provision:
       set -eux
 
       apt-get update
-      apt-get install -y software-properties-common python3-pip uidmap curl
+      apt-get install -y software-properties-common curl uidmap gnupg lsb-release python3-pip
 
-      echo "Installing Podman..."
-      echo "deb http://deb.debian.org/debian bullseye-backports main" >> /etc/apt/sources.list
+      # Add official Podman PPA for Ubuntu 20.04 (Focal)
+      source /etc/os-release
+      echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
+      curl -fsSL https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | apt-key add -
+
       apt-get update
-      apt-get -t bullseye-backports install -y podman
+      apt-get install -y podman
 
-      # Ensure podman is visible everywhere
-      ln -sf /usr/bin/podman /usr/local/bin/podman
+      # Ensure Podman is accessible to subprocesses like podman-compose
+      ln -sf $(command -v podman) /usr/local/bin/podman
 
+      # Global shell environment
       echo 'export PATH="/usr/local/bin:/usr/bin:$PATH"' >> /etc/profile
       echo 'export DOCKER_HOST=unix:///run/user/1000/podman/podman.sock' >> /etc/profile
       echo 'alias podman="podman --remote"' >> /etc/profile
@@ -37,10 +41,10 @@ provision:
     script: |
       mkdir -p ~/.local/bin
 
-      # Wrapper shim for podman
+      # Create wrapper shim for podman in ~/.local/bin
       cat <<'EOF' > ~/.local/bin/podman
       #!/bin/bash
-      exec /usr/bin/podman "$@"
+      exec /usr/local/bin/podman "$@"
       EOF
 
       chmod +x ~/.local/bin/podman
@@ -52,5 +56,17 @@ provision:
 
       pip3 install --user podman-compose
 
-      # Validate install
+      # Confirm podman is working
       podman --version
+
+ssh:
+  localPort: 60022
+
+portForwards:
+  - guestPort: 8080
+    hostPort: 8080
+  - guestPort: 5555
+    hostPort: 5555
+
+env:
+  DOCKER_HOST: "unix:///run/user/1000/podman/podman.sock"
