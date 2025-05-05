@@ -1,158 +1,183 @@
-# 🌀 Learn Apache Airflow with CeleryExecutor on Podman (Apple Silicon & x86 Ready)
+# Airflow Project
 
-This project helps you deploy **Apache Airflow** using **Podman** on macOS — with support for both **Apple Silicon (M1–M4)** and **x86_64 machines**. It uses `CeleryExecutor`, and includes PostgreSQL, Redis, Flower, and full `podman-compose` compatibility.
+This repository contains DAGs, plugins, and configuration for our Airflow deployment.
 
----
-
-## 🚀 Features
-
-- ✅ CeleryExecutor-based Airflow deployment
-- ✅ PostgreSQL for metadata DB
-- ✅ Redis as Celery broker
-- ✅ Flower UI for task monitoring
-- ✅ `podman-compose` support for both x86 and ARM
-- ✅ Lima VM config for native Podman on Apple Silicon
-- ✅ Sample DAGs including ETL, sensor, and parallel tasks
-
----
-
-## 📁 Project Structure
+## Structure
 
 ```
-learn_airflow_playground/
-├── dags/
-│   ├── 01_hello_world.py
-│   ├── 02_csv_etl.py
-│   ├── 03_s3_sensor_example.py
-│   └── 04_parallel_tasks.py
-├── docker/
-│   └── podman-compose.yaml
-├── plugins/
-│   └── my_custom_operator.py
-├── setup.sh
-├── requirements.txt
-├── lima-podman-config.yaml
-└── README.md
+airflow-project/
+├── dags/                 # Airflow DAGs
+├── plugins/              # Custom plugins and operators
+├── config/               # Configuration files
+├── data/                 # Data files (gitignored if sensitive)
+├── scripts/              # Utility scripts
+└── requirements.txt      # Python dependencies
 ```
 
----
+## Setup
 
-## ⚙️ Setup Instructions (x86 or Lima)
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/airflow-project.git
+   cd airflow-project
+   ```
 
-### 🔧 On x86 Machines
+2. Create and activate virtual environment:
+   ```bash
+   python3.11 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Initialize Airflow:
+   ```bash
+   export AIRFLOW_HOME=$(pwd)
+   airflow db init
+   ```
+
+5. Create an admin user:
+   ```bash
+   airflow users create \
+       --username admin \
+       --password admin \
+       --firstname Admin \
+       --lastname User \
+       --role Admin \
+       --email admin@example.com
+   ```
+
+6. Link DAGs directory:
+   ```bash
+   ln -sf $(pwd)/dags $AIRFLOW_HOME/dags
+   ```
+
+7. Start Airflow:
+   ```bash
+   # Terminal 1
+   airflow webserver --port 8080
+   
+   # Terminal 2
+   airflow scheduler
+   ```
+
+8. Access Airflow UI at `http://localhost:8080`
+
+## Development
+
+### Adding New DAGs
+
+1. Create a new DAG file in the `dags/` directory
+2. Test it with:
+   ```bash
+   python -m py_compile dags/your_new_dag.py
+   ```
+3. Run validation script:
+   ```bash
+   ./scripts/test_dag.sh
+   ```
+
+### Best Practices
+
+- Follow PEP8 style guidelines
+- Use descriptive task IDs
+- Include proper error handling
+- Document complex DAGs
+- Use environment variables for sensitive data
+
+## Project Management
+
+### Testing
 
 ```bash
-cd docker
-podman-compose -f podman-compose.yaml up -d
+# Test specific DAG
+airflow dags test my_dag_id 2024-01-01
+
+# List import errors
+airflow dags list-import-errors
+
+# Run test script
+./scripts/test_dag.sh
 ```
 
-### 🍏 On Apple Silicon (M1–M4 Macs)
+### Deployment
 
-1. **Install Lima**:
+1. Create a new branch for your feature
+2. Test locally
+3. Create pull request
+4. Review and merge
+5. Deploy to production
 
+### Monitoring
+
+- Check logs in `logs/` directory
+- Monitor DAG runs in the UI
+- Set up alerting for critical failures
+
+## Environment Configuration
+
+### Development
 ```bash
-brew install lima
+# Copy example config
+cp config/airflow.cfg.example config/airflow.cfg
+
+# Set development environment
+source scripts/set_env.sh dev
 ```
 
-2. **Start the Lima VM with Podman**:
-
+### Production
 ```bash
-limactl start --name=podman-airflow --set arch=aarch64 template://podman
+# Set production environment
+source scripts/set_env.sh prod
 ```
 
-3. **Shell into the Lima VM**:
+## Troubleshooting
 
-```bash
-limactl shell podman-airflow
-cd /Users/YOUR_USERNAME/path/to/learn_airflow_playground/docker
-pip3 install podman-compose
-podman-compose -f podman-compose.yaml up -d
-```
+### Common Issues
 
-4. **(Optional) Enable Port Forwarding**:
+1. **DAG import errors**
+   ```bash
+   airflow dags list-import-errors
+   ```
 
-Add this to your Lima config and restart:
+2. **Database connection issues**
+   ```bash
+   airflow db check
+   ```
 
-```yaml
-portForwards:
-  - guestPort: 8080
-    hostPort: 8080
-  - guestPort: 5555
-    hostPort: 5555
-```
+3. **Scheduler not running**
+   ```bash
+   ps aux | grep airflow
+   ```
 
----
+### Logs
 
-## 🌐 Access Interfaces
+- Webserver logs: `logs/webserver/`
+- Scheduler logs: `logs/scheduler/`
+- Task logs: `logs/dag_id/task_id/`
 
-| Component     | URL                         | Notes                        |
-|---------------|-----------------------------|------------------------------|
-| Airflow UI    | http://localhost:8080       | Login: `admin / admin`       |
-| Flower UI     | http://localhost:5555       | Celery monitoring dashboard  |
+## Contributing
 
----
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-## 📦 Python Requirements (for local DAG dev)
+## License
 
-```bash
-pip install -r requirements.txt
-```
+This project is licensed under the MIT License - see the LICENSE file for details.
 
----
+## Contact
 
-## 🧪 Included DAGs
+For questions or support, please contact:
+- Email: your-email@example.com
+- Slack: #airflow-support
 
-| DAG Name              | Description                               |
-|------------------------|-------------------------------------------|
-| `hello_world`         | Basic BashOperator example                |
-| `csv_etl_demo`        | Download, clean, and print a CSV          |
-| `s3_sensor_example`   | Waits for an S3 file then runs a command  |
-| `parallel_task_demo`  | Demonstrates 3 tasks running in parallel  |
+## Acknowledgments
 
----
-
-## 🧠 Tips for Using Airflow Webserver
-
-- 🧪 Place new DAGs in the `dags/` folder.
-- 🔁 If DAGs don't appear, restart the webserver container.
-- 🔒 For production: reverse proxy with NGINX or Traefik.
-
----
-
-## 🍏 Apple Silicon (M1/M2/M3/M4) Setup Tips
-
-If you're on an Apple Silicon Mac, follow these steps to avoid architecture issues with QEMU and Podman:
-
-### ✅ 1. Use the Correct Homebrew Architecture
-
-```bash
-/opt/homebrew/bin/brew install qemu
-```
-
-Avoid `/usr/local/bin/brew`, which installs x86_64 binaries.
-
-### ✅ 2. Check That QEMU Is ARM-Compatible
-
-```bash
-file $(which qemu-system-aarch64)
-```
-
-✅ You should see: `Mach-O 64-bit executable arm64`  
-❌ If you see `x86_64`, uninstall QEMU and reinstall with the correct brew.
-
----
-
-## 🧑‍💻 Author
-
-**Harry A. Staley Jr.**  
-GitHub: [@harrystaley](https://github.com/harrystaley)  
-LinkedIn: [linkedin.com/in/harrystaley](https://linkedin.com/in/harrystaley)
-
----
-
-## 📚 Resources
-
-- [Apache Airflow Documentation](https://airflow.apache.org/docs/)
-- [Podman Docs](https://docs.podman.io/)
-- [Colima](https://github.com/abiosoft/colima)
-- [Lima](https://github.com/lima-vm/lima)
+- Apache Airflow community
+- Contributors and maintainers
