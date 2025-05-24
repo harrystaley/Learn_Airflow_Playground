@@ -1,33 +1,5 @@
-# Virtual Environment
-venv/
-env/
 .env
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-
-# Airflow
-airflow.db
-airflow.cfg.lock
 logs/
-*.pid
-
-# IDE settings
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Local data
-data/local/
-
-# MacOS
-.DS_Store
-
-# Don't commit credentials
-*.pem
-*.key
-secrets/
+__pycache__/
+*.pyc
+airflow.db
