@@ -1,0 +1,15 @@
+name: airflow
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - pre-commmit
+      - apache-airflow==3.0.1
+      - psycopg2-binary
+      - redis
+      - cryptography
+      - flask
+      - flask-cors
+      - gunicorn

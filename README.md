@@ -25,7 +25,7 @@ cd Learn_Airflow_Playground
 
 ```bash
 conda env create -f environment.yml
-conda activate airflow-playground
+conda activate airflow
 podman-compose up --build
 ```
 
@@ -36,17 +36,16 @@ podman-compose up --build
 ## 📁 Project Structure
 
 ```text
-.
-├── airflow/                 
-│   ├── dags/                # DAG files (with version metadata)
-│   ├── plugins/             # Custom plugins
-│   └── airflow.cfg          # Optional config overrides
-├── docker/
-│   ├── Dockerfile           # Custom Airflow 3 image
-│   └── entrypoint.sh
+Learn_Airflow_Playground/               
+├── dags/                # DAG files (with version metadata)
+├── plugins/             # Custom plugins
 ├── logs/                    # Logs (volume mounted)
 ├── .env                     # Podman Compose environment variables
+├─- tests/                   # Contains unit tests.
+|   └- dags/
+|   |- plugins/
 ├── environment.yml          # Conda environment setup
+├── .gitignore               # Gitignore for not pushing files undesired in version control.
 ├── podman-compose.yaml      # Service definition
 └── README.md
 ```
